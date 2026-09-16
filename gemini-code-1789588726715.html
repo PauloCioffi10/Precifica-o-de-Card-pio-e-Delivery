@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#176b35" />
+<title>Precificação para Delivery</title>
+<style>
+  :root {
+    --bg: #f7f9f6;
+    --card: #ffffff;
+    --text: #142018;
+    --muted: #66716a;
+    --accent: #176b35;
+    --accent2: #2e8747;
+    --line: #dde5de;
+    --ok: #176b35;
+    --danger: #a33a3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap {
+    max-width: 1100px;
+    margin: auto;
+    padding: 20px;
+  }
+  .brand-header {
+    padding: 18px 20px;
+    background: linear-gradient(90deg, #e7f4e5 0%, #f7fbf5 100%);
+    border: 1px solid #d9e7d9;
+    border-radius: 14px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brand-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .nav-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  }
+  .card h2 {
+    margin-top: 0;
+    font-size: 20px;
+    color: var(--text);
+  }
+  .grid-inputs {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 15px;
+  }
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 15px;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent2); }
+  button {
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    min-height: 42px;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: #eef3ee; color: var(--text); border: 1px solid var(--line); }
+  .btn-danger { background: #fff1f1; color: var(--danger); border: 1px solid #efd8d8; }
+  .ingredient-list {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 15px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border-top: 1px solid var(--line);
+  }
+  .row.head {
+    background: #f4f6f4;
+    font-weight: bold;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 0;
+  }
+  .money { text-align: right; font-weight: bold; }
+  .total-cost {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #e8f5e9;
+    border-radius: 10px;
+  }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 15px;
+  }
+  .result {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    background: #f7fbf7;
+  }
+  .result strong {
+    display: block;
+    font-size: 24px;
+    margin-top: 8px;
+  }
+  .result.highlight {
+    background: #e7f5e8;
+    border-color: #cce3ce;
+  }
+  .result.highlight strong {
+    color: var(--accent);
+  }
+  .mini {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .warning {
+    margin-top: 10px;
+    color: var(--danger);
+    font-size: 13px;
+    display: none;
+  }
+  .save-status {
+    font-size: 13px;
+    margin-top: 8px;
+    font-weight: bold;
+  }
+  .save-status.ok { color: var(--ok); }
+  .save-status.err { color: var(--danger); }
+  .hidden { display: none !important; }
+  .archive-list { display: grid; gap: 12px; margin-top: 15px; }
+  .archive-item { border: 1px solid var(--line); border-radius: 10px; padding: 15px; background: #fff; }
+  .archive-values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; }
+  .archive-value { background: #f8fbf8; border-radius: 8px; padding: 10px; }
+  .archive-value span { display: block; font-size: 11px; color: var(--muted); }
+  .archive-value b { font-size: 15px; }
+  @media(max-width: 700px) {
+    .grid-inputs { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr 1fr; }
+    .row.head { display: none; }
+    .archive-values { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="brand-header">
+    <div class="brand-title">Precificação para Delivery</div>
+    <div class="mini">Ficha Técnica & Custos Real</div>
+  </header>
+
+  <div class="nav-actions">
+    <button class="btn-primary" id="btnPaginaPrincipal" type="button">Nova / Ficha atual</button>
+    <button class="btn-secondary" id="btnMinhasFichas" type="button">Minhas fichas</button>
+  </div>
+
+  <!-- SEÇÃO PRINCIPAL DE EDICAO E CÁLCULO -->
+  <section id="pageMain" class="page-section">
+    <div class="card">
+      <h2>1. Ficha Técnica dos Ingredientes</h2>
+      <div style="margin-bottom: 15px;">
+        <label>Nome do Prato / Ficha</label>
+        <input id="nomeFicha" type="text" placeholder="Ex: X-Salada Especial">
+      </div>
+
+      <div class="grid-inputs">
+        <div>
+          <label>Quantidade</label>
+          <input id="qtd" type="number" step="0.001" min="0" placeholder="0.200">
+        </div>
+        <div>
+          <label>Produto / Ingrediente</label>
+          <input id="produto" type="text" placeholder="Carne Moída (kg)">
+        </div>
+        <div>
+          <label>Preço Unitário (R$)</label>
+          <input id="preco" type="number" step="0.01" min="0" placeholder="30.00">
+        </div>
+        <div>
+          <button class="btn-primary" onclick="adicionar()" type="button">+ Adicionar</button>
+        </div>
+      </div>
+
+      <div class="ingredient-list">
+        <div class="row head">
+          <div>Quantidade</div>
+          <div>Produto</div>
+          <div>Preço Un.</div>
+          <div class="money">Total</div>
+          <div>Ação</div>
+        </div>
+        <div id="lista"></div>
+      </div>
+
+      <div class="total-cost">
+        <span>Custo total da ficha técnica:</span>
+        <strong id="custoFicha">R$ 0,00</strong>
+      </div>
+      <div id="saveStatus" class="save-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Markup e outras taxas</h2>
+      <div class="grid3">
+        <div>
+          <label>Markup multiplicador</label>
+          <input id="markup" type="number" min="1" step="0.1" value="4" oninput="calcular()">
+        </div>
+        <div>
+          <label>Lucro desejado (%)</label>
+          <input id="lucro" type="number" min="0" step="0.1" value="15" oninput="calcular()">
+        </div>
+        <div>
+          <label>Taxa da operadora / delivery (%)</label>
+          <input id="taxa" type="number" min="0" max="99.99" step="0.1" value="27" oninput="calcular()">
+        </div>
+        <div>
+          <label>Preço base calculado</label>
+          <input id="precoBaseView" type="text" value="R$ 0,00" readonly>
+        </div>
+      </div>
+
+      <p class="mini" style="margin-top: 15px;">
+        <b>Fórmula utilizada:</b> Preço base = Custo × Markup × (1 + Lucro%). <br>
+        Preço com delivery = Preço base ÷ (1 − Taxa%).
+      </p>
+      <div class="warning" id="warning">
+        A taxa da operadora precisa ser menor que 100%.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Resultado Sugerido</h2>
+      <div class="summary">
+        <div class="result">
+          Preço sugerido sem taxa
+          <strong id="semDelivery">R$ 0,00</strong>
+          <span class="mini">Venda no balcão / salão</span>
+        </div>
+        <div class="result highlight">
+          Preço sugerido no Delivery
+          <strong id="comDelivery">R$ 0,00</strong>
+          <span class="mini">Com a taxa repassada da plataforma</span>
+        </div>
+      </div>
+      <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-primary" id="btnSalvarFicha" type="button">Salvar ficha</button>
+        <button class="btn-secondary" onclick="limpar()" type="button">Limpar ficha</button>
+        <button class="btn-secondary" onclick="window.print()" type="button">Imprimir / PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SEÇÃO DE ARQUIVO DAS FICHAS SALVAS -->
+  <section id="pageArchive" class="page-section hidden">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Minhas Fichas Salvas</h2>
+        <button class="btn-primary" id="btnNovaFichaArchive" type="button">+ Nova ficha</button>
+      </div>
+      <div id="archiveList" class="archive-list">
+        <div class="archive-empty">Carregando suas fichas...</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+let itens = [];
+window.fichaEditandoId = null;
+
+function brl(v){
+  return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+
+function num(id){
+  const v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) ? 0 : v;
+}
+
+function adicionar(){
+  const qtd = num('qtd');
+  const produto = document.getElementById('produto').value.trim();
+  const preco = num('preco');
+
+  if(qtd <= 0 || !produto || preco < 0){
+    alert('Preencha quantidade, produto e preço corretamente.');
+    return;
+  }
+
+  itens.push({qtd, produto, preco});
+  document.getElementById('qtd').value='';
+  document.getElementById('produto').value='';
+  document.getElementById('preco').value='';
+  document.getElementById('qtd').focus();
+  render();
+}
+
+function remover(i){
+  itens.splice(i,1);
+  render();
+}
+
+function render(){
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '';
+  itens.forEach((item,i)=>{
+    const total = item.qtd * item.preco;
+    lista.innerHTML += `
+      <div class="row">
+        <div>${item.qtd.toLocaleString('pt-BR',{maximumFractionDigits:3})}</div>
+        <div>${item.produto}</div>
+        <div>${brl(item.preco)}</div>
+        <div class="money">${brl(total)}</div>
+        <div><button class="btn-danger" onclick="remover(${i})" type="button">Excluir</button></div>
+      </div>`;
+  });
+  calcular();
+}
+
+function calcular(){
+  const custo = itens.reduce((s,item)=>s+(item.qtd*item.preco),0);
+  document.getElementById('custoFicha').textContent = brl(custo);
+
+  const markup = num('markup');
+  const lucroPct = num('lucro');
+  const lucro = lucroPct / 100;
+  const taxaPct = num('taxa');
+  const taxa = taxaPct / 100;
+
+  const warning = document.getElementById('warning');
+
+  if(taxa >= 1){
+    warning.style.display='block';
+    document.getElementById('semDelivery').textContent='—';
+    document.getElementById('comDelivery').textContent='—';
+    document.getElementById('precoBaseView').value='—';
+    return;
+  }
+
+  warning.style.display='none';
+
+  const precoComMarkup = custo === 0 ? 0 : custo * markup;
+  const precoBase = precoComMarkup * (1 + lucro);
+  const precoComDelivery = custo === 0 ? 0 : precoBase / (1 - taxa);
+
+  document.getElementById('precoBaseView').value = brl(precoBase);
+  document.getElementById('semDelivery').textContent = brl(precoBase);
+  document.getElementById('comDelivery').textContent = brl(precoComDelivery);
+}
+
+function limpar(){
+  if(confirm('Limpar todos os itens da ficha técnica?')){
+    itens=[];
+    document.getElementById('nomeFicha').value='';
+    window.fichaEditandoId = null;
+    document.getElementById('saveStatus').textContent='';
+    render();
+  }
+}
+
+window.novaFichaDireta = function(){
+  itens=[];
+  document.getElementById('nomeFicha').value='';
+  document.getElementById('markup').value=4;
+  document.getElementById('lucro').value=15;
+  document.getElementById('taxa').value=27;
+  window.fichaEditandoId=null;
+  document.getElementById('saveStatus').textContent='';
+  render();
+};
+
+window.getFichaAtual = function(){
+  const custo = itens.reduce((s,item)=>s+(item.qtd*item.preco),0);
+  const markup = num('markup');
+  const lucroPct = num('lucro');
+  const taxaPct = num('taxa');
+  const precoBase = custo * markup * (1 + lucroPct/100);
+  const precoDelivery = taxaPct >= 100 ? 0 : precoBase / (1 - taxaPct/100);
+  return {
+    nome: document.getElementById('nomeFicha').value.trim(),
+    itens: JSON.parse(JSON.stringify(itens)),
+    markup,
+    lucro: lucroPct,
+    taxa: taxaPct,
+    custo_total: custo,
+    preco_base: precoBase,
+    preco_delivery: precoDelivery
+  };
+};
+
+window.carregarFichaNoFormulario = function(ficha){
+  window.fichaEditandoId = ficha.id;
+  document.getElementById('nomeFicha').value = ficha.nome || '';
+  itens = Array.isArray(ficha.itens) ? ficha.itens : [];
+  document.getElementById('markup').value = ficha.markup ?? 4;
+  document.getElementById('lucro').value = ficha.lucro ?? 15;
+  document.getElementById('taxa').value = ficha.taxa ?? 27;
+  render();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter' && ['qtd','produto','preco'].includes(document.activeElement.id)){
+    adicionar();
+  }
+});
+
+// Gerenciamento LocalStorage
+(function(){
+  const KEY='precificacao_delivery_fichas';
+  const main=document.getElementById('pageMain'), arch=document.getElementById('pageArchive');
+  const bMain=document.getElementById('btnPaginaPrincipal'), bArch=document.getElementById('btnMinhasFichas');
+  const list=document.getElementById('archiveList'), status=document.getElementById('saveStatus');
+  
+  const all=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}};
+  const save=a=>localStorage.setItem(KEY,JSON.stringify(a));
+  const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const brl2=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+  function msg(t,c=''){status.textContent=t;status.className='save-status '+c}
+  
+  function showMain(){
+    main.classList.remove('hidden');arch.classList.add('hidden');
+    bMain.className='btn-primary';bArch.className='btn-secondary';
+  }
+  
+  function showArchive(){
+    main.classList.add('hidden');arch.classList.remove('hidden');
+    bMain.className='btn-secondary';bArch.className='btn-primary';
+    renderArchive();
+  }
+
+  function saveFicha(){
+    const f=window.getFichaAtual();
+    if(!f.nome){msg('Dê um nome para a ficha antes de salvar.','err');return}
+    if(!f.itens.length){msg('Adicione pelo menos um ingrediente à ficha.','err');return}
+    let a=all(), now=new Date().toISOString();
+    if(window.fichaEditandoId){
+      let i=a.findIndex(x=>x.id===window.fichaEditandoId);
+      if(i>=0)a[i]={...a[i],...f,updated_at:now}; else a.unshift({...f,id:window.fichaEditandoId,updated_at:now});
+    } else {
+      window.fichaEditandoId='f'+Date.now();
+      a.unshift({...f,id:window.fichaEditandoId,updated_at:now});
+    }
+    save(a);msg('Ficha salva com sucesso!','ok');
+  }
+
+  function renderArchive(){
+    const a=all();
+    if(!a.length){list.innerHTML='<div class="archive-empty">Nenhuma ficha salva ainda.</div>';return}
+    list.innerHTML='';
+    a.forEach(f=>{
+      const el=document.createElement('div');el.className='archive-item';
+      el.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0">${esc(f.nome||'Ficha sem nome')}</h3>
+          <span class="mini">${(f.itens||[]).length} ingrediente(s)</span>
+        </div>
+        <div class="archive-values">
+          <div class="archive-value"><span>Custo Ficha</span><b>${brl2(f.custo_total)}</b></div>
+          <div class="archive-value"><span>Preço Balcão</span><b>${brl2(f.preco_base)}</b></div>
+          <div class="archive-value"><span>Preço Delivery</span><b>${brl2(f.preco_delivery)}</b></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary open" type="button">Editar</button>
+          <button class="btn-danger del" type="button">Excluir</button>
+        </div>`;
+      el.querySelector('.open').onclick=()=>{window.carregarFichaNoFormulario(f);showMain();msg('Ficha carregada para edição.','ok')};
+      el.querySelector('.del').onclick=()=>{if(confirm('Excluir esta ficha?')){save(all().filter(x=>x.id!==f.id));renderArchive()}};
+      list.appendChild(el);
+    });
+  }
+
+  bMain.onclick=showMain;
+  bArch.onclick=showArchive;
+  document.getElementById('btnNovaFichaArchive').onclick=()=>{window.novaFichaDireta();showMain()};
+  document.getElementById('btnSalvarFicha').onclick=saveFicha;
+
+  showMain();
+  render();
+})();
+</script>
+</body>
+</html>
