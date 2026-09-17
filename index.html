@@ -332,22 +332,6 @@
 </style>
 </head>
 <body>
-
-<div class="auth-overlay" id="authOverlay">
-  <div class="auth-box">
-    <h2>Acesso ao aplicativo</h2>
-    <p>Entre com o e-mail e a senha autorizados.</p>
-    <label for="loginEmail">E-mail</label>
-    <input id="loginEmail" type="email" autocomplete="username">
-    <label for="loginPassword">Senha</label>
-    <input id="loginPassword" type="password" autocomplete="current-password">
-    <div class="auth-actions">
-      <button class="btn-primary" id="loginBtn" type="button">Entrar</button>
-      <button class="btn-secondary" id="resetPasswordBtn" type="button">Esqueci minha senha</button>
-    </div>
-    <div class="auth-error" id="authError"></div>
-    <div class="auth-ok" id="authOk"></div>
-  </div>
 </div>
 
 
@@ -359,7 +343,7 @@
     <div class="brand-lines">FICHA TÉCNICA<br>CUSTO REAL<br>PREÇO CORRETO<br>MAIS RESULTADO</div>
     <div class="brand-tag">GESTÃO<br>QUE SERVE<br>RESULTADOS</div>
   </header>
-  <div class="topbar"><div class="user-info" id="userInfo"></div><button class="btn-secondary hidden" id="logoutBtn" type="button">Sair</button></div>
+<button class="btn-secondary hidden" id="logoutBtn" type="button">Sair</button></div>
   <div class="nav-actions">
     <button class="btn-primary" id="btnPaginaPrincipal" type="button">Nova / Ficha atual</button>
     <button class="btn-secondary" id="btnMinhasFichas" type="button">Minhas fichas</button>
@@ -451,9 +435,9 @@
     </div>
 
     <p class="mini">
-      Primeiro o custo da ficha técnica é multiplicado pelo markup. Depois é acrescentado o percentual de lucro.
+      Primeiro o custo da ficha técnica é multiplicado pelo markup. Depois a margem de lucro desejada é incorporada dividindo pelo complementar do percentual.
       A taxa do delivery é aplicada somente no final, dividindo o preço base pelo complementar da taxa.
-      <b>Preço base = custo × markup × (1 + lucro)</b> e
+      <b>Preço base = (custo × markup) ÷ (1 − lucro)</b> e
       <b>Preço com delivery = preço base ÷ (1 − taxa)</b>.
     </p>
     <div class="warning" id="warning">
@@ -467,7 +451,7 @@
       <div class="result">
         Preço sugerido sem taxa de delivery
         <strong id="semDelivery">R$ 0,00</strong>
-        <span class="mini">Custo da ficha técnica × markup + lucro.</span>
+        <span class="mini">Custo da ficha técnica × markup, dividido pelo complementar da margem de lucro.</span>
       </div>
       <div class="result highlight">
         Preço sugerido com taxa de delivery
@@ -484,8 +468,8 @@
 
   <div class="card mini">
     <b>Exemplo rápido:</b> ficha técnica de R$ 20,00 com markup 3 gera R$ 60,00.
-    Com lucro de 15%, o preço base passa para <b>R$ 69,00</b>.
-    Com taxa de delivery de 23%, o cálculo final é R$ 69,00 ÷ 0,77 = <b>R$ 89,61</b>.
+    Com margem desejada de 15%, o preço base é R$ 80,00 ÷ 0,85 = <b>R$ 94,12</b>.
+    Com taxa de delivery de 27%, o cálculo final é R$ 94,12 ÷ 0,73 = <b>R$ 128,93</b>.
   </div>
 
   <div class="card mini">
@@ -608,7 +592,7 @@ function calcular(){
   warning.style.display='none';
 
   const precoComMarkup = custo === 0 ? 0 : custo * markup;
-  const precoBase = precoComMarkup * (1 + lucro);
+  const precoBase = lucro >= 1 ? 0 : precoComMarkup / (1 - lucro);
   const precoComDelivery = custo === 0 ? 0 : precoBase / (1 - taxa);
 
   document.getElementById('precoBaseView').value = brl(precoBase);
@@ -645,7 +629,7 @@ window.getFichaAtual = function(){
   const markup = num('markup');
   const lucroPct = num('lucro');
   const taxaPct = num('taxa');
-  const precoBase = custo * markup * (1 + lucroPct/100);
+  const precoBase = lucroPct >= 100 ? 0 : (custo * markup) / (1 - lucroPct/100);
   const precoDelivery = taxaPct >= 100 ? 0 : precoBase / (1 - taxaPct/100);
   return {
     nome: document.getElementById('nomeFicha').value.trim(),
@@ -663,9 +647,9 @@ window.carregarFichaNoFormulario = function(ficha){
   window.fichaEditandoId = ficha.id;
   document.getElementById('nomeFicha').value = ficha.nome || '';
   itens = Array.isArray(ficha.itens) ? ficha.itens : [];
-  document.getElementById('markup').value = ficha.markup ?? 3;
+  document.getElementById('markup').value = ficha.markup ?? 4;
   document.getElementById('lucro').value = ficha.lucro ?? 15;
-  document.getElementById('taxa').value = ficha.taxa ?? 23;
+  document.getElementById('taxa').value = ficha.taxa ?? 27;
   render();
   window.scrollTo({top:0,behavior:'smooth'});
 };
@@ -683,309 +667,47 @@ render();
 
 
 
-<script type="module">
-const SUPABASE_URL='https://jfneljppjrqpfsbtqxrf.supabase.co';
-const SUPABASE_ANON_KEY='sb_publishable_YpB0m0eMFXGWpdWCwsNMSw_0aCrZsZN';
-
-const overlay=document.getElementById('authOverlay');
-const emailInput=document.getElementById('loginEmail');
-const passwordInput=document.getElementById('loginPassword');
-const loginBtn=document.getElementById('loginBtn');
-const resetBtn=document.getElementById('resetPasswordBtn');
-const logoutBtn=document.getElementById('logoutBtn');
-const authError=document.getElementById('authError');
-const authOk=document.getElementById('authOk');
-const userInfo=document.getElementById('userInfo');
-const pageMain=document.getElementById('pageMain');
-const pageArchive=document.getElementById('pageArchive');
-const btnMain=document.getElementById('btnPaginaPrincipal');
-const btnArchive=document.getElementById('btnMinhasFichas');
-const archiveList=document.getElementById('archiveList');
-const saveStatus=document.getElementById('saveStatus');
-
-let supabase;
-let currentUser=null;
-
-const mod=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-supabase=mod.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-
-function brlArchive(v){
-  return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+<script>
+(function(){
+const K='precificacao_delivery_fichas_local';
+const main=document.getElementById('pageMain'), arq=document.getElementById('pageArchive');
+const bm=document.getElementById('btnPaginaPrincipal'), ba=document.getElementById('btnMinhasFichas');
+const lista=document.getElementById('archiveList'), st=document.getElementById('saveStatus');
+const ler=()=>{try{return JSON.parse(localStorage.getItem(K)||'[]')}catch(e){return[]}};
+const gravar=a=>localStorage.setItem(K,JSON.stringify(a));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const moeda=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function status(m,t=''){st.textContent=m||'';st.className='save-status '+t}
+function toast(m){const t=document.getElementById('saveToast');t.textContent=m;t.className='toast-save ok show';setTimeout(()=>t.classList.remove('show'),2500)}
+function principal(){main.classList.remove('hidden');arq.classList.add('hidden');bm.className='btn-primary';ba.className='btn-secondary'}
+function arquivo(){main.classList.add('hidden');arq.classList.remove('hidden');bm.className='btn-secondary';ba.className='btn-primary';renderArquivo()}
+function salvar(){
+ const f=window.getFichaAtual();
+ if(!f.nome){status('Dê um nome para a ficha antes de salvar.','err');return}
+ if(!f.itens.length){status('Adicione pelo menos um item à ficha.','err');return}
+ let a=ler(), agora=new Date().toISOString();
+ if(window.fichaEditandoId){let i=a.findIndex(x=>x.id===window.fichaEditandoId);if(i>=0)a[i]={...a[i],...f,updated_at:agora};else a.unshift({...f,id:window.fichaEditandoId,updated_at:agora})}
+ else{window.fichaEditandoId='f'+Date.now();a.unshift({...f,id:window.fichaEditandoId,updated_at:agora})}
+ gravar(a);status('Ficha salva com sucesso.','ok');toast('Ficha salva com sucesso.')
 }
-function dataBr(v){
-  if(!v) return '';
-  return new Date(v).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+function renderArquivo(){
+ const a=ler(); if(!a.length){lista.innerHTML='<div class="archive-empty">Você ainda não salvou nenhuma ficha.</div>';return}
+ lista.innerHTML='';
+ a.forEach(f=>{const d=document.createElement('div');d.className='archive-item';
+ d.innerHTML=`<div class="archive-item-top"><div><h3>${esc(f.nome||'Ficha sem nome')}</h3></div></div>
+ <div class="archive-values"><div class="archive-value"><span>Custo da ficha</span><b>${moeda(f.custo_total)}</b></div><div class="archive-value"><span>Preço base</span><b>${moeda(f.preco_base)}</b></div><div class="archive-value"><span>Com delivery</span><b>${moeda(f.preco_delivery)}</b></div></div>
+ <div class="archive-meta">${(f.itens||[]).length} item(ns) • Markup ${f.markup} • Margem ${f.lucro}% • Delivery ${f.taxa}%</div>
+ <div class="archive-buttons"><button class="btn-primary abrir">Abrir / editar</button><button class="btn-danger excluir">Excluir</button></div>`;
+ d.querySelector('.abrir').onclick=()=>{window.carregarFichaNoFormulario(f);principal()};
+ d.querySelector('.excluir').onclick=()=>{if(confirm('Excluir esta ficha definitivamente?')){gravar(ler().filter(x=>x.id!==f.id));renderArquivo()}};
+ lista.appendChild(d)})
 }
-function setSaveStatus(msg,type=''){
-  saveStatus.textContent=msg||'';
-  saveStatus.className='save-status '+(type||'');
-}
-function showToast(msg,type='ok'){
-  const toast=document.getElementById('saveToast');
-  toast.textContent=msg;
-  toast.className='toast-save '+type+' show';
-  clearTimeout(window.__toastTimer);
-  window.__toastTimer=setTimeout(()=>{
-    toast.classList.remove('show');
-  },3000);
-}
-function showMain(){
-  pageMain.classList.remove('hidden');
-  pageArchive.classList.add('hidden');
-  btnMain.className='btn-primary';
-  btnArchive.className='btn-secondary';
-}
-async function showArchive(){
-  pageMain.classList.add('hidden');
-  pageArchive.classList.remove('hidden');
-  btnMain.className='btn-secondary';
-  btnArchive.className='btn-primary';
-  await carregarArquivo();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-function setSession(session){
-  currentUser=session?.user||null;
-  if(currentUser){
-    overlay.classList.add('hidden');
-    logoutBtn.classList.remove('hidden');
-    userInfo.textContent='Conectado como: '+currentUser.email;
-  }else{
-    overlay.classList.remove('hidden');
-    logoutBtn.classList.add('hidden');
-    userInfo.textContent='';
-    showMain();
-  }
-}
-
-const {data}=await supabase.auth.getSession();
-setSession(data.session);
-supabase.auth.onAuthStateChange((_e,session)=>setSession(session));
-
-loginBtn.addEventListener('click',async()=>{
-  authError.textContent=''; authOk.textContent='';
-  const email=emailInput.value.trim(), password=passwordInput.value;
-  if(!email||!password){authError.textContent='Informe e-mail e senha.';return;}
-  const {error}=await supabase.auth.signInWithPassword({email,password});
-  if(error) authError.textContent='E-mail ou senha inválidos, ou usuário sem autorização.';
-});
-resetBtn.addEventListener('click',async()=>{
-  authError.textContent=''; authOk.textContent='';
-  const email=emailInput.value.trim();
-  if(!email){authError.textContent='Informe seu e-mail.';return;}
-  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
-  if(error) authError.textContent='Não foi possível enviar a recuperação.';
-  else authOk.textContent='Se o e-mail estiver cadastrado, você receberá as instruções.';
-});
-logoutBtn.addEventListener('click',async()=>{await supabase.auth.signOut();});
-passwordInput.addEventListener('keydown',e=>{if(e.key==='Enter') loginBtn.click();});
-
-btnMain.addEventListener('click',showMain);
-btnArchive.addEventListener('click',showArchive);
-document.getElementById('btnNovaFichaArchive').addEventListener('click',()=>{
-  window.novaFichaDireta();
-  showMain();
-});
-
-async function salvarFicha(){
-  if(!currentUser){
-    setSaveStatus('Faça login para salvar a ficha.','err');
-    return;
-  }
-  const ficha=window.getFichaAtual();
-  if(!ficha.nome){
-    setSaveStatus('Dê um nome para a ficha antes de salvar.','err');
-    document.getElementById('nomeFicha').focus();
-    return;
-  }
-  if(!ficha.itens.length){
-    setSaveStatus('Adicione pelo menos um item à ficha.','err');
-    return;
-  }
-
-  setSaveStatus('Salvando...');
-  const payload={
-    user_id: currentUser.id,
-    nome: ficha.nome,
-    itens: ficha.itens,
-    markup: ficha.markup,
-    lucro: ficha.lucro,
-    taxa: ficha.taxa,
-    custo_total: ficha.custo_total,
-    preco_base: ficha.preco_base,
-    preco_delivery: ficha.preco_delivery,
-    updated_at: new Date().toISOString()
-  };
-
-  let result;
-  if(window.fichaEditandoId){
-    result=await supabase.from('fichas_precificacao')
-      .update(payload)
-      .eq('id',window.fichaEditandoId)
-      .select('id')
-      .single();
-  }else{
-    result=await supabase.from('fichas_precificacao')
-      .insert(payload)
-      .select('id')
-      .single();
-  }
-
-  if(result.error){
-    console.error(result.error);
-    setSaveStatus('Não foi possível salvar. Verifique se a tabela do Supabase foi criada.','err');
-    return;
-  }
-  window.fichaEditandoId=result.data.id;
-  setSaveStatus('Ficha salva com sucesso.','ok');
-  showToast('Ficha salva com sucesso.','ok');
-}
-
-document.getElementById('btnSalvarFicha').addEventListener('click',salvarFicha);
-document.getElementById('btnSalvarFicha2').addEventListener('click',salvarFicha);
-
-async function carregarArquivo(){
-  if(!currentUser){
-    archiveList.innerHTML='<div class="archive-empty">Faça login para ver suas fichas.</div>';
-    return;
-  }
-  archiveList.innerHTML='<div class="archive-empty">Carregando suas fichas...</div>';
-  const {data,error}=await supabase.from('fichas_precificacao')
-    .select('*')
-    .order('updated_at',{ascending:false});
-
-  if(error){
-    console.error(error);
-    archiveList.innerHTML='<div class="archive-empty">Não foi possível carregar as fichas. Verifique se a tabela foi criada no Supabase.</div>';
-    return;
-  }
-  if(!data || !data.length){
-    archiveList.innerHTML='<div class="archive-empty">Você ainda não salvou nenhuma ficha.</div>';
-    return;
-  }
-
-  archiveList.innerHTML='';
-  data.forEach(f=>{
-    const el=document.createElement('div');
-    el.className='archive-item';
-    el.innerHTML=`
-      <div class="archive-item-top">
-        <div>
-          <h3>${escapeHtml(f.nome||'Ficha sem nome')}</h3>
-          <div class="archive-meta">Atualizada em ${dataBr(f.updated_at)}</div>
-        </div>
-      </div>
-      <div class="archive-values">
-        <div class="archive-value"><span>Custo da ficha</span><b>${brlArchive(f.custo_total)}</b></div>
-        <div class="archive-value"><span>Preço base</span><b>${brlArchive(f.preco_base)}</b></div>
-        <div class="archive-value"><span>Com delivery</span><b>${brlArchive(f.preco_delivery)}</b></div>
-      </div>
-      <div class="archive-meta">${Array.isArray(f.itens)?f.itens.length:0} item(ns) • Markup ${Number(f.markup||0).toLocaleString('pt-BR')} • Lucro ${Number(f.lucro||0).toLocaleString('pt-BR')}% • Delivery ${Number(f.taxa||0).toLocaleString('pt-BR')}%</div>
-      <div class="archive-buttons">
-        <button class="btn-primary btn-open" type="button">Abrir / editar</button>
-        <button class="btn-danger btn-delete" type="button">Excluir</button>
-      </div>`;
-    el.querySelector('.btn-open').addEventListener('click',()=>{
-      window.carregarFichaNoFormulario(f);
-      showMain();
-      setSaveStatus('Ficha carregada para edição.','ok');
-    });
-    el.querySelector('.btn-delete').addEventListener('click',async()=>{
-      if(!confirm('Excluir esta ficha definitivamente?')) return;
-      const {error:delError}=await supabase.from('fichas_precificacao').delete().eq('id',f.id);
-      if(delError){
-        alert('Não foi possível excluir a ficha.');
-      }else{
-        showToast('Ficha excluída com sucesso.','ok');
-        carregarArquivo();
-      }
-    });
-    archiveList.appendChild(el);
-  });
-}
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-}
-
-let deferredPrompt=null;
-const installBtn=document.getElementById('installBtn');
-const installDescription=document.getElementById('installDescription');
-const installHelp=document.getElementById('installHelp');
-
-const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const isStandalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
-
-if(isStandalone){
-  installBtn.textContent='App instalado';
-  installBtn.disabled=true;
-  installDescription.textContent='Este aplicativo já está instalado neste dispositivo.';
-}else if(isMobile){
-  installBtn.textContent='Instalar no celular';
-}else{
-  installBtn.textContent='Instalar no computador';
-  installDescription.textContent='Instale no computador para abrir em uma janela própria, como um programa.';
-}
-
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault();
-  deferredPrompt=e;
-  installHelp.style.display='none';
-});
-
-installBtn.addEventListener('click',async()=>{
-  if(isStandalone) return;
-
-  if(deferredPrompt){
-    deferredPrompt.prompt();
-    const choice=await deferredPrompt.userChoice;
-    if(choice.outcome==='accepted'){
-      installBtn.textContent='Instalando...';
-    }
-    deferredPrompt=null;
-    return;
-  }
-
-  installHelp.style.display='block';
-  if(isIOS){
-    installHelp.innerHTML='<b>iPhone/iPad:</b> abra no Safari, toque em Compartilhar e escolha <b>Adicionar à Tela de Início</b>.';
-  }else if(!isMobile){
-    installHelp.innerHTML='<b>No computador:</b> no Chrome ou Edge, abra o menu do navegador e escolha <b>Instalar Precificação para Delivery</b> ou procure o ícone de instalação na barra de endereços.';
-  }else{
-    installHelp.innerHTML='<b>No celular:</b> abra o menu do navegador e escolha <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.';
-  }
-});
-
-window.addEventListener('appinstalled',()=>{
-  installBtn.textContent='App instalado';
-  installBtn.disabled=true;
-  installHelp.style.display='none';
-});
-
-const howToOverlay=document.getElementById('howToOverlay');
-const howToBtn=document.getElementById('howToBtn');
-const howToClose=document.getElementById('howToClose');
-const howToOk=document.getElementById('howToOk');
-
-function openHowTo(){
-  howToOverlay.classList.remove('hidden');
-  howToClose.focus();
-}
-function closeHowTo(){
-  howToOverlay.classList.add('hidden');
-  howToBtn.focus();
-}
-howToBtn.addEventListener('click',openHowTo);
-howToClose.addEventListener('click',closeHowTo);
-howToOk.addEventListener('click',closeHowTo);
-howToOverlay.addEventListener('click',e=>{
-  if(e.target===howToOverlay) closeHowTo();
-});
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape' && !howToOverlay.classList.contains('hidden')) closeHowTo();
-});
-
-if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+bm.onclick=principal;ba.onclick=arquivo;
+document.getElementById('btnNovaFichaArchive').onclick=()=>{window.novaFichaDireta();principal()};
+document.getElementById('btnSalvarFicha').onclick=salvar;
+document.getElementById('btnSalvarFicha2').onclick=salvar;
+principal();
+})();
 </script>
 
 
