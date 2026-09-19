@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#176b35" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Preço Delivery" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>Precificação para Delivery</title>
+<style>
+  :root{
+    --bg:#f6f3ee;
+    --card:#ffffff;
+    --text:#2b241f;
+    --muted:#746b64;
+    --accent:#7a4e2d;
+    --accent2:#b68a5a;
+    --line:#e8dfd6;
+    --ok:#2d6a4f;
+    --danger:#a33a3a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  .wrap{
+    max-width:980px;
+    margin:auto;
+    padding:18px;
+  }
+  h1{margin:0 0 5px;font-size:30px}
+  .sub{color:var(--muted);margin-bottom:20px}
+  .card{
+    background:var(--card);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+    box-shadow:0 4px 18px rgba(0,0,0,.06);
+  }
+  .card h2{margin:0 0 15px;font-size:20px}
+  .grid4{
+    display:grid;
+    grid-template-columns:1fr 2fr 1fr auto;
+    gap:10px;
+  }
+  .grid3{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+  }
+  label{
+    display:block;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:5px;
+    font-weight:bold;
+  }
+  input{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px;
+    font-size:16px;
+    outline:none;
+  }
+  input:focus{border-color:var(--accent2)}
+  button{
+    border:0;
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:15px;
+    font-weight:bold;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--accent);color:white}
+  .btn-secondary{background:#eee7df;color:var(--text)}
+  .btn-danger{background:#f7e5e5;color:var(--danger)}
+  .ingredient-list{margin-top:14px}
+  .row{
+    display:grid;
+    grid-template-columns:1fr 2fr 1fr 1fr auto;
+    gap:8px;
+    align-items:center;
+    border-top:1px solid var(--line);
+    padding:10px 0;
+  }
+  .head{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:bold;
+    border-top:0;
+    padding-top:0;
+  }
+  .money{text-align:right;font-weight:bold}
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+  }
+  .result{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+  }
+  .result strong{
+    display:block;
+    font-size:26px;
+    margin-top:5px;
+  }
+  .result.highlight{
+    border:2px solid var(--accent2);
+    background:#fffaf4;
+  }
+  .mini{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.45;
+  }
+  .total-cost{
+    margin-top:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px;
+    background:#f8f5f1;
+    border-radius:12px;
+  }
+  .total-cost strong{font-size:22px}
+  .warning{
+    margin-top:12px;
+    color:var(--danger);
+    font-size:13px;
+    display:none;
+  }
+  @media(max-width:700px){
+    .grid4,.grid3,.summary{grid-template-columns:1fr}
+    .row{
+      grid-template-columns:1fr 1fr;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      margin-bottom:8px;
+    }
+    .head{display:none}
+    .row .money{text-align:left}
+    .row button{grid-column:1 / -1}
+  }
+
+  .security-overlay{
+    position:fixed; inset:0; background:rgba(246,243,238,.98);
+    display:flex; align-items:center; justify-content:center; padding:20px; z-index:9999;
+  }
+  .security-box{
+    width:min(430px,100%); background:#fff; border-radius:18px; padding:22px;
+    box-shadow:0 8px 30px rgba(0,0,0,.12);
+  }
+  .security-box h2{margin:0 0 8px}
+  .security-box p{color:var(--muted);font-size:14px;line-height:1.45}
+  .security-box input{margin:8px 0}
+  .security-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .security-error{color:var(--danger);font-size:13px;min-height:18px;margin-top:6px}
+  .install-card{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    background:#fffaf4;border:1px solid #ead7c1;
+  }
+  .install-card .mini{margin:0;max-width:650px}
+  .hidden{display:none!important}
+
+
+.auth-overlay{position:fixed;inset:0;background:rgba(246,243,238,.98);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
+.auth-box{width:min(430px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.auth-box input{margin:8px 0}
+.auth-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.auth-error{color:var(--danger);font-size:13px;min-height:18px;margin-top:8px}
+.auth-ok{color:var(--ok);font-size:13px;min-height:18px;margin-top:8px}
+.topbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.user-info{font-size:13px;color:var(--muted)}
+.hidden{display:none!important}
+
+
+.nav-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 18px}
+.page-section.hidden{display:none!important}
+.ficha-name-box{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:14px}
+.archive-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.archive-list{display:grid;gap:12px;margin-top:14px}
+.archive-item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.archive-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.archive-item h3{margin:0 0 4px;font-size:18px}
+.archive-meta{font-size:13px;color:var(--muted);line-height:1.5}
+.archive-values{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.archive-value{background:#f8f5f1;border-radius:10px;padding:10px}
+.archive-value span{display:block;font-size:12px;color:var(--muted)}
+.archive-value b{font-size:16px}
+.archive-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.archive-empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+.save-status{font-size:13px;min-height:18px;margin-top:8px}
+.save-status.ok{color:var(--ok)}
+.save-status.err{color:var(--danger)}
+@media(max-width:700px){
+  .ficha-name-box{grid-template-columns:1fr}
+  .archive-values{grid-template-columns:1fr}
+}
+
+
+.toast-save{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  z-index:10000;
+  background:#fff;
+  border:1px solid #d8c4b1;
+  border-radius:14px;
+  padding:14px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.14);
+  font-size:14px;
+  font-weight:700;
+  max-width:320px;
+  opacity:0;
+  transform:translateY(12px);
+  pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+}
+.toast-save.show{
+  opacity:1;
+  transform:translateY(0);
+}
+.toast-save.ok{color:var(--ok)}
+.toast-save.err{color:var(--danger)}
+
+
+  /* Controle de acesso — login Supabase */
+  #loginGate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:var(--bg)}
+  .login-card{width:min(440px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 8px 30px rgba(0,0,0,.10);border:1px solid var(--line)}
+  .login-card h1{font-size:25px;margin:0 0 6px}.login-card p{color:var(--muted);line-height:1.45}
+  .login-card label{display:block;font-weight:700;margin:14px 0 6px}.login-card input{width:100%;padding:12px;border:1px solid #d8cec5;border-radius:10px;font-size:16px}
+  .login-actions{display:grid;gap:9px;margin-top:16px}.login-actions button{width:100%}
+  .login-link{border:0;background:transparent;color:var(--accent);cursor:pointer;text-decoration:underline;padding:7px;font-size:14px}
+  #loginMsg{min-height:20px;margin-top:12px;font-size:14px}.login-error{color:var(--danger)}.login-ok{color:var(--ok)}
+  #appShell{display:none}
+
+</style>
+
+<style id="v6-template-anexo">
+:root{--bg:#f7f9f6;--card:#fff;--text:#142018;--muted:#66716a;--accent:#176b35;--accent2:#2e8747;--line:#dde5de;--ok:#176b35;--danger:#a33a3a}
+*{box-sizing:border-box} body{background:#f7f9f6;color:var(--text);font-family:Arial,Helvetica,sans-serif}.wrap{max-width:1240px;padding:0 20px 0;margin:auto}
+.brand-header{position:relative;margin:0 -20px;padding:18px 300px 16px 20px;min-height:112px;background:linear-gradient(90deg,#e7f4e5 0%,#f7fbf5 74%);border-bottom:1px solid #d9e7d9;overflow:hidden;display:grid;grid-template-columns:minmax(310px,1.2fr) minmax(190px,.8fr) minmax(120px,.5fr);align-items:center;gap:24px}.brand-header:after{content:'';position:absolute;right:0;top:0;width:270px;height:100%;background:url('food-header.png') center/cover no-repeat;z-index:0}.brand-mark{display:flex;align-items:center;gap:13px;min-width:330px}.chef-icon{width:64px;height:64px;border:4px solid #176b35;border-radius:18px 18px 14px 14px;position:relative}.chef-icon:before{content:'☁';position:absolute;font-size:58px;line-height:40px;left:0;top:-22px;color:#176b35}.brand-title{font-size:32px;font-weight:800;line-height:.95;color:#0f5b2b}.brand-lines{border-left:1px solid #447b55;padding-left:24px;font-size:13px;line-height:1.35;color:#173d25}.brand-tag{font-size:13px;font-weight:700;line-height:1.35;color:#17462a;position:relative;z-index:2;justify-self:end;text-align:left}.topbar{margin:0;padding:10px 0;background:transparent;border:0;justify-content:flex-end}.user-info{font-size:13px;color:#405248}.nav-actions{margin:0 0 16px;padding:10px 0;display:flex;gap:12px;border:0}.btn-primary{background:linear-gradient(#237a3d,#176b35);color:#fff;border:1px solid #145c2e}.btn-secondary{background:#f1f3f0;color:#173a24;border:1px solid #e2e6e1}.btn-danger{background:#fff1f1;color:#9c3333;border:1px solid #efd8d8}button{border-radius:9px;min-height:44px}
+.app-title-old{display:none}.install-card{background:linear-gradient(90deg,#e9f6e9,#f6faf5);border:1px solid #d6e8d7;box-shadow:none;border-radius:10px;min-height:84px;padding:18px 18px 18px 92px;position:relative}.install-card b{font-size:21px}.card{border:1px solid #e1e7e1;border-radius:12px;box-shadow:0 5px 18px rgba(22,62,31,.045);padding:16px}.ficha-name-box{display:grid;grid-template-columns:1fr 190px;gap:16px;align-items:end}.ficha-name-box label{color:#1e2b22}.save-status.ok{background:#e8f6e9;border:1px solid #bcdcbf;border-radius:8px;padding:10px 12px;color:#125c2b;font-weight:700}.save-status.ok:before{content:'✓  '}.save-status.err{background:#fff1f1;border:1px solid #efcccc;border-radius:8px;padding:10px 12px}
+#pageMain>.card:nth-of-type(2) h2{font-size:24px}.card h2{color:#142019}.card h2:before{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:50%;background:linear-gradient(#2a8746,#176b35);color:#fff;margin-right:12px;font-size:20px;vertical-align:middle}#pageMain>.card:nth-of-type(2) h2:before{content:'1'}#pageMain>.card:nth-of-type(3) h2:before{content:'2'}#pageMain>.card:nth-of-type(4) h2:before{content:'3'}
+.ingredient-list{border:1px solid #e0e6e0;border-radius:9px;overflow:hidden}.row{padding:12px 10px;border-top:1px solid #e7ece7}.row.head{background:#f4f6f4;color:#26362b}.total-cost{background:linear-gradient(90deg,#e8f5e9,#f3f9f3);border:1px solid #d7e8d8}.total-cost strong{font-size:28px;color:#102019}.grid3{grid-template-columns:1fr}.summary{grid-template-columns:1fr}.result{background:#f7fbf7;border-color:#dce9dc}.result.highlight{background:linear-gradient(#e7f5e8,#dceedd);border:1px solid #cce3ce}.result.highlight strong{display:block;background:#176b35;color:#fff;margin:12px -16px -16px;padding:16px;border-radius:0 0 12px 12px;font-size:28px}
+#pageMain>.card.mini{background:#eef8ef;border-color:#d5e8d7}.archive-item{border-color:#dfe7df}.archive-value{background:#eff7ef}.archive-item h3{color:#174d29}.archive-empty{background:#fbfcfb;border-color:#d9e3da}.toast-save{background:#f2faf3;border-color:#b9dcbc;color:#155f2e}.auth-overlay{background:linear-gradient(145deg,#e7f4e5,#f8fbf7)}.auth-box{border:1px solid #d5e7d5}.auth-box h2{color:#155c2d}
+.app-footer{margin:18px -20px 0;padding:16px 24px;background:linear-gradient(90deg,#dff1df,#eef8ec);display:flex;justify-content:space-between;align-items:center;gap:18px;color:#183d25;font-size:13px}.app-footer strong{display:block;font-size:15px}.footer-right{text-align:right}
+@media(min-width:900px){#pageMain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(330px,.82fr);gap:16px;align-items:start}#pageMain>.install-card,#pageMain>.card:nth-of-type(1),#pageMain>.card.mini{grid-column:1/-1}#pageMain>.card:nth-of-type(2){grid-column:1;grid-row:3/span 2}#pageMain>.card:nth-of-type(3){grid-column:2;grid-row:3}#pageMain>.card:nth-of-type(4){grid-column:2;grid-row:4}}
+@media(max-width:850px){.brand-header{padding-right:20px}.brand-header:after{display:none}.brand-tag{display:none}.brand-mark{min-width:0}.brand-lines{display:none}}
+@media(max-width:700px){.wrap{padding:0 12px}.brand-header{margin:0 -12px;padding:15px 12px;min-height:90px}.brand-title{font-size:27px}.chef-icon{width:50px;height:50px}.nav-actions:after{display:none}.ficha-name-box{grid-template-columns:1fr}.install-card{padding-left:18px}.app-footer{margin-left:-12px;margin-right:-12px;flex-direction:column;align-items:flex-start}.footer-right{text-align:left}}
+
+.install-card{
+  padding:16px 18px !important;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+}
+.install-info{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.install-icon{
+  flex:0 0 52px;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#d8efdb;
+  display:grid;
+  place-items:center;
+  color:#12602c;
+}
+.install-icon svg{width:28px;height:28px}
+.install-copy{min-width:0}
+.install-copy b{display:block;font-size:20px;margin-bottom:3px}
+.install-copy p{margin:0}
+.nav-spacer{flex:1}
+#howToBtn{white-space:nowrap}
+.howto-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(13,35,20,.42);
+  z-index:11000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.howto-box{
+  width:min(600px,100%);
+  max-height:86vh;
+  overflow:auto;
+  background:#fff;
+  border:1px solid #d8e5d9;
+  border-radius:16px;
+  box-shadow:0 18px 60px rgba(0,0,0,.18);
+  padding:22px;
+}
+.howto-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:10px;
+}
+.howto-head h2{margin:0;color:#155c2d}
+.howto-close{
+  min-width:44px;
+  padding:8px 12px;
+}
+.howto-box ol{padding-left:22px;line-height:1.55}
+.howto-box li{margin:8px 0}
+.install-help{
+  margin-top:10px;
+  padding:10px 12px;
+  background:#eef8ef;
+  border:1px solid #d4e8d6;
+  border-radius:9px;
+  font-size:13px;
+  color:#405248;
+  display:none;
+}
+@media(max-width:700px){
+  .install-card{align-items:stretch;flex-direction:column}
+  .install-info{align-items:flex-start}
+  .install-card #installBtn{width:100%}
+  .nav-spacer{display:none}
+  #howToBtn{width:100%}
+}
+
+</style>
+</head>
+<body>
+<div id="loginGate">
+  <div class="login-card">
+    <h1>Precificação para Delivery</h1>
+    <p>Entre com o mesmo e-mail utilizado na compra.</p>
+    <label for="loginEmail">E-mail</label>
+    <input id="loginEmail" type="email" autocomplete="email" placeholder="seu@email.com">
+    <label for="loginSenha">Senha</label>
+    <input id="loginSenha" type="password" autocomplete="current-password" placeholder="Sua senha">
+    <div class="login-actions">
+      <button class="btn-primary" id="loginBtn" type="button">Entrar</button>
+      <button class="btn-secondary" id="criarSenhaBtn" type="button">Primeiro acesso — criar minha senha</button>
+      <button class="login-link" id="esqueciSenhaBtn" type="button">Esqueci minha senha</button>
+    </div>
+    <div id="loginMsg" aria-live="polite"></div>
+  </div>
+</div>
+<div id="appShell">
+
+</div>
+
+
+
+
+<div class="wrap">
+  <header class="brand-header">
+    <div class="brand-mark"><div class="chef-icon" aria-hidden="true"></div><div class="brand-title">Precificação<br>para Delivery</div></div>
+    <div class="brand-lines">FICHA TÉCNICA<br>CUSTO REAL<br>PREÇO CORRETO<br>MAIS RESULTADO</div>
+    <div class="brand-tag">GESTÃO<br>QUE SERVE<br>RESULTADOS</div>
+  </header>
+<button class="btn-secondary hidden" id="logoutBtn" type="button">Sair</button></div>
+  <div class="nav-actions">
+    <button class="btn-primary" id="btnPaginaPrincipal" type="button">Nova / Ficha atual</button>
+    <button class="btn-secondary" id="btnMinhasFichas" type="button">Minhas fichas</button>
+    <span class="nav-spacer" aria-hidden="true"></span>
+    <button class="btn-secondary" id="howToBtn" type="button">? &nbsp; Como usar</button>
+  </div>
+
+  <section id="pageMain" class="page-section">
+
+
+  <div class="card install-card" id="installCard">
+    <div class="install-info">
+      <div class="install-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="6" y="2.5" width="12" height="19" rx="2"></rect>
+          <line x1="10" y1="18.5" x2="14" y2="18.5"></line>
+        </svg>
+      </div>
+      <div class="install-copy">
+        <b>Instalar este app</b>
+        <p class="mini" id="installDescription">Adicione um ícone no celular ou no computador e abra como um aplicativo.</p>
+        <div class="install-help" id="installHelp"></div>
+      </div>
+    </div>
+    <button class="btn-primary" id="installBtn" type="button">Instalar app</button>
+  </div>
+
+
+  <div class="card">
+    <div class="ficha-name-box">
+      <div>
+        <label>Nome da ficha</label>
+        <input id="nomeFicha" type="text" placeholder="Ex.: Filé de frango com fritas">
+      </div>
+      <button class="btn-primary" id="btnSalvarFicha" type="button">Salvar ficha</button>
+    </div>
+    <div id="saveStatus" class="save-status"></div>
+    <h2>1. Monte a ficha técnica</h2>
+    <div class="grid4">
+      <div>
+        <label>Quantidade</label>
+        <input id="qtd" type="number" min="0" step="0.001" placeholder="Ex.: 0,200">
+      </div>
+      <div>
+        <label>Produto</label>
+        <input id="produto" type="text" placeholder="Ex.: Filé de frango">
+      </div>
+      <div>
+        <label>Preço unitário (R$)</label>
+        <input id="preco" type="number" min="0" step="0.01" placeholder="Ex.: 28,90">
+      </div>
+      <div style="display:flex;align-items:end">
+        <button class="btn-primary" onclick="adicionar()">+ Adicionar</button>
+      </div>
+    </div>
+
+    <div class="ingredient-list">
+      <div class="row head">
+        <div>Quantidade</div><div>Produto</div><div>Preço</div><div>Total</div><div></div>
+      </div>
+      <div id="lista"></div>
+    </div>
+
+    <div class="total-cost">
+      <span>Custo total da ficha técnica</span>
+      <strong id="custoFicha">R$ 0,00</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Markup e outras taxas</h2>
+    <div class="grid3">
+      <div>
+        <label>Markup multiplicador</label>
+        <input id="markup" type="number" min="1" step="0.1" value="4" oninput="calcular()">
+      </div>
+      <div>
+        <label>Lucro desejado (%)</label>
+        <input id="lucro" type="number" min="0" step="0.1" value="15" oninput="calcular()">
+      </div>
+      <div>
+        <label>Taxa da operadora / delivery (%)</label>
+        <input id="taxa" type="number" min="0" max="99.99" step="0.1" value="27" oninput="calcular()">
+      </div>
+      <div>
+        <label>Preço base calculado</label>
+        <input id="precoBaseView" type="text" value="R$ 0,00" readonly>
+      </div>
+    </div>
+
+    <p class="mini">
+      Primeiro o custo da ficha técnica é multiplicado pelo markup. Depois a margem de lucro desejada é incorporada dividindo pelo complementar do percentual.
+      A taxa do delivery é aplicada somente no final, dividindo o preço base pelo complementar da taxa.
+      <b>Preço base = (custo × markup) ÷ (1 − lucro)</b> e
+      <b>Preço com delivery = preço base ÷ (1 − taxa)</b>.
+    </p>
+    <div class="warning" id="warning">
+      A taxa da operadora precisa ser menor que 100%.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Resultado</h2>
+    <div class="summary">
+      <div class="result">
+        Preço sugerido sem taxa de delivery
+        <strong id="semDelivery">R$ 0,00</strong>
+        <span class="mini">Custo da ficha técnica × markup, dividido pelo complementar da margem de lucro.</span>
+      </div>
+      <div class="result highlight">
+        Preço sugerido com taxa de delivery
+        <strong id="comDelivery">R$ 0,00</strong>
+        <span class="mini">Preço base dividido pelo complementar da taxa da operadora.</span>
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-primary" id="btnSalvarFicha2" type="button">Salvar ficha</button>
+      <button class="btn-secondary" onclick="limpar()">Limpar ficha</button>
+      <button class="btn-secondary" onclick="window.print()">Imprimir / Salvar PDF</button>
+    </div>
+  </div>
+
+  <div class="card mini">
+    <b>Exemplo rápido:</b> ficha técnica de R$ 20,00 com markup 3 gera R$ 60,00.
+    Com margem desejada de 15%, o preço base é R$ 80,00 ÷ 0,85 = <b>R$ 94,12</b>.
+    Com taxa de delivery de 27%, o cálculo final é R$ 94,12 ÷ 0,73 = <b>R$ 128,93</b>.
+  </div>
+
+  <div class="card mini">
+    <b>Importante:</b> informe o preço na mesma unidade usada na quantidade.
+    Exemplo: se a carne custa R$ 30,00 por kg e são usados 200 g, informe a quantidade como
+    <b>0,200</b> e o preço como <b>30,00</b>.
+  </div>
+  </section>
+
+  <section id="pageArchive" class="page-section hidden">
+    <div class="card">
+      <div class="archive-header">
+        <div>
+          <h2 style="margin-bottom:4px">Minhas fichas</h2>
+          <div class="mini">Fichas salvas na sua conta.</div>
+        </div>
+        <button class="btn-primary" id="btnNovaFichaArchive" type="button">+ Nova ficha</button>
+      </div>
+      <div id="archiveList" class="archive-list">
+        <div class="archive-empty">Carregando suas fichas...</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="howto-overlay hidden" id="howToOverlay" role="dialog" aria-modal="true" aria-labelledby="howToTitle">
+    <div class="howto-box">
+      <div class="howto-head">
+        <h2 id="howToTitle">Como usar o Precificação para Delivery</h2>
+        <button class="btn-secondary howto-close" id="howToClose" type="button" aria-label="Fechar">×</button>
+      </div>
+      <ol>
+        <li><b>Dê um nome à ficha</b>, por exemplo “Filé com fritas”.</li>
+        <li><b>Adicione cada ingrediente</b> informando quantidade, produto e preço unitário.</li>
+        <li>Confira o <b>custo total da ficha técnica</b>.</li>
+        <li>Informe o <b>markup multiplicador</b>, o lucro desejado e a taxa da operadora de delivery.</li>
+        <li>O app calcula o <b>preço sugerido sem delivery</b> e o <b>preço com a taxa do delivery</b>.</li>
+        <li>Clique em <b>Salvar ficha</b>. Ela ficará arquivada em <b>Minhas fichas</b>.</li>
+        <li>Em <b>Minhas fichas</b>, você pode abrir, editar ou excluir uma ficha salva.</li>
+      </ol>
+      <p class="mini"><b>Importante:</b> use a mesma unidade entre quantidade e preço. Ex.: se o preço informado é por quilo, 200 g devem ser digitados como 0,200.</p>
+      <button class="btn-primary" id="howToOk" type="button">Entendi</button>
+    </div>
+  </div>
+
+  <footer class="app-footer"><div><strong>🍴 Precificação para Delivery</strong>Ferramenta prática para donos e gestores de restaurantes.</div><div class="footer-right">Controle hoje.<br><strong>Mais resultado amanhã.</strong></div></footer>
+</div>
+
+<script>
+let itens = [];
+
+function brl(v){
+  return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+
+function num(id){
+  const v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) ? 0 : v;
+}
+
+function adicionar(){
+  const qtd = num('qtd');
+  const produto = document.getElementById('produto').value.trim();
+  const preco = num('preco');
+
+  if(qtd <= 0 || !produto || preco < 0){
+    alert('Preencha quantidade, produto e preço.');
+    return;
+  }
+
+  itens.push({qtd, produto, preco});
+  document.getElementById('qtd').value='';
+  document.getElementById('produto').value='';
+  document.getElementById('preco').value='';
+  document.getElementById('qtd').focus();
+  render();
+}
+
+function remover(i){
+  itens.splice(i,1);
+  render();
+}
+
+function render(){
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '';
+  itens.forEach((item,i)=>{
+    const total = item.qtd * item.preco;
+    lista.innerHTML += `
+      <div class="row">
+        <div>${item.qtd.toLocaleString('pt-BR',{maximumFractionDigits:3})}</div>
+        <div>${item.produto}</div>
+        <div>${brl(item.preco)}</div>
+        <div class="money">${brl(total)}</div>
+        <button class="btn-danger" onclick="remover(${i})">Excluir</button>
+      </div>`;
+  });
+  calcular();
+}
+
+function calcular(){
+  const custo = itens.reduce((s,item)=>s+(item.qtd*item.preco),0);
+  document.getElementById('custoFicha').textContent = brl(custo);
+
+  const markup = num('markup');
+  const lucroPct = num('lucro');
+  const lucro = lucroPct / 100;
+  const taxaPct = num('taxa');
+  const taxa = taxaPct / 100;
+
+  const warning = document.getElementById('warning');
+
+  if(taxa >= 1){
+    warning.style.display='block';
+    document.getElementById('semDelivery').textContent='—';
+    document.getElementById('comDelivery').textContent='—';
+    document.getElementById('precoBaseView').value='—';
+    return;
+  }
+
+  warning.style.display='none';
+
+  const precoComMarkup = custo === 0 ? 0 : custo * markup;
+  const precoBase = lucro >= 1 ? 0 : precoComMarkup / (1 - lucro);
+  const precoComDelivery = custo === 0 ? 0 : precoBase / (1 - taxa);
+
+  document.getElementById('precoBaseView').value = brl(precoBase);
+  document.getElementById('semDelivery').textContent = brl(precoBase);
+  document.getElementById('comDelivery').textContent = brl(precoComDelivery);
+}
+
+function limpar(){
+  if(confirm('Limpar todos os itens da ficha técnica?')){
+    itens=[];
+    document.getElementById('nomeFicha').value='';
+    window.fichaEditandoId = null;
+    document.getElementById('saveStatus').textContent='';
+    render();
+  }
+}
+
+
+window.fichaEditandoId = null;
+
+window.novaFichaDireta = function(){
+  itens=[];
+  document.getElementById('nomeFicha').value='';
+  document.getElementById('markup').value=4;
+  document.getElementById('lucro').value=15;
+  document.getElementById('taxa').value=27;
+  window.fichaEditandoId=null;
+  document.getElementById('saveStatus').textContent='';
+  render();
+};
+
+window.getFichaAtual = function(){
+  const custo = itens.reduce((s,item)=>s+(item.qtd*item.preco),0);
+  const markup = num('markup');
+  const lucroPct = num('lucro');
+  const taxaPct = num('taxa');
+  const precoBase = lucroPct >= 100 ? 0 : (custo * markup) / (1 - lucroPct/100);
+  const precoDelivery = taxaPct >= 100 ? 0 : precoBase / (1 - taxaPct/100);
+  return {
+    nome: document.getElementById('nomeFicha').value.trim(),
+    itens: JSON.parse(JSON.stringify(itens)),
+    markup,
+    lucro: lucroPct,
+    taxa: taxaPct,
+    custo_total: custo,
+    preco_base: precoBase,
+    preco_delivery: precoDelivery
+  };
+};
+
+window.carregarFichaNoFormulario = function(ficha){
+  window.fichaEditandoId = ficha.id;
+  document.getElementById('nomeFicha').value = ficha.nome || '';
+  itens = Array.isArray(ficha.itens) ? ficha.itens : [];
+  document.getElementById('markup').value = ficha.markup ?? 4;
+  document.getElementById('lucro').value = ficha.lucro ?? 15;
+  document.getElementById('taxa').value = ficha.taxa ?? 27;
+  render();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter' && ['qtd','produto','preco'].includes(document.activeElement.id)){
+    adicionar();
+  }
+});
+
+render();
+</script>
+
+
+
+
+
+<script>
+(function(){
+const K='precificacao_delivery_fichas_local';
+const main=document.getElementById('pageMain'), arq=document.getElementById('pageArchive');
+const bm=document.getElementById('btnPaginaPrincipal'), ba=document.getElementById('btnMinhasFichas');
+const lista=document.getElementById('archiveList'), st=document.getElementById('saveStatus');
+const ler=()=>{try{return JSON.parse(localStorage.getItem(K)||'[]')}catch(e){return[]}};
+const gravar=a=>localStorage.setItem(K,JSON.stringify(a));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const moeda=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function status(m,t=''){st.textContent=m||'';st.className='save-status '+t}
+function toast(m){const t=document.getElementById('saveToast');t.textContent=m;t.className='toast-save ok show';setTimeout(()=>t.classList.remove('show'),2500)}
+function principal(){main.classList.remove('hidden');arq.classList.add('hidden');bm.className='btn-primary';ba.className='btn-secondary'}
+function arquivo(){main.classList.add('hidden');arq.classList.remove('hidden');bm.className='btn-secondary';ba.className='btn-primary';renderArquivo()}
+function salvar(){
+ const f=window.getFichaAtual();
+ if(!f.nome){status('Dê um nome para a ficha antes de salvar.','err');return}
+ if(!f.itens.length){status('Adicione pelo menos um item à ficha.','err');return}
+ let a=ler(), agora=new Date().toISOString();
+ if(window.fichaEditandoId){let i=a.findIndex(x=>x.id===window.fichaEditandoId);if(i>=0)a[i]={...a[i],...f,updated_at:agora};else a.unshift({...f,id:window.fichaEditandoId,updated_at:agora})}
+ else{window.fichaEditandoId='f'+Date.now();a.unshift({...f,id:window.fichaEditandoId,updated_at:agora})}
+ gravar(a);status('Ficha salva com sucesso.','ok');toast('Ficha salva com sucesso.')
+}
+function renderArquivo(){
+ const a=ler(); if(!a.length){lista.innerHTML='<div class="archive-empty">Você ainda não salvou nenhuma ficha.</div>';return}
+ lista.innerHTML='';
+ a.forEach(f=>{const d=document.createElement('div');d.className='archive-item';
+ d.innerHTML=`<div class="archive-item-top"><div><h3>${esc(f.nome||'Ficha sem nome')}</h3></div></div>
+ <div class="archive-values"><div class="archive-value"><span>Custo da ficha</span><b>${moeda(f.custo_total)}</b></div><div class="archive-value"><span>Preço base</span><b>${moeda(f.preco_base)}</b></div><div class="archive-value"><span>Com delivery</span><b>${moeda(f.preco_delivery)}</b></div></div>
+ <div class="archive-meta">${(f.itens||[]).length} item(ns) • Markup ${f.markup} • Margem ${f.lucro}% • Delivery ${f.taxa}%</div>
+ <div class="archive-buttons"><button class="btn-primary abrir">Abrir / editar</button><button class="btn-danger excluir">Excluir</button></div>`;
+ d.querySelector('.abrir').onclick=()=>{window.carregarFichaNoFormulario(f);principal()};
+ d.querySelector('.excluir').onclick=()=>{if(confirm('Excluir esta ficha definitivamente?')){gravar(ler().filter(x=>x.id!==f.id));renderArquivo()}};
+ lista.appendChild(d)})
+}
+bm.onclick=principal;ba.onclick=arquivo;
+document.getElementById('btnNovaFichaArchive').onclick=()=>{window.novaFichaDireta();principal()};
+document.getElementById('btnSalvarFicha').onclick=salvar;
+document.getElementById('btnSalvarFicha2').onclick=salvar;
+principal();
+})();
+</script>
+
+
+</div><!-- /appShell -->
+
+<div id="saveToast" class="toast-save" role="status" aria-live="polite"></div>
+
+<script>
+/* Login e controle de acesso. Não altera os cálculos do aplicativo. */
+(() => {
+  const SUPABASE_URL = 'https://ntxzfyqyuwbeammpakgx.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_T7UpzSoCL_3hdaqVkPOIOw__cBIBxZz';
+  const PRODUCT_CODE = 'precificacao_delivery';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const gate = document.getElementById('loginGate');
+  const app = document.getElementById('appShell');
+  const msg = document.getElementById('loginMsg');
+  const emailEl = document.getElementById('loginEmail');
+  const senhaEl = document.getElementById('loginSenha');
+  const logout = document.getElementById('logoutBtn');
+
+  function mensagem(t, ok=false){ msg.textContent=t; msg.className=ok?'login-ok':'login-error'; }
+  function email(){ return (emailEl.value||'').trim().toLowerCase(); }
+  function mostrarApp(){ gate.style.display='none'; app.style.display='block'; if(logout) logout.classList.remove('hidden'); }
+  async function temAcesso(userEmail){
+    const {data,error}=await sb.from('app_acessos').select('ativo,status').eq('email',userEmail.toLowerCase()).eq('produto',PRODUCT_CODE).maybeSingle();
+    if(error) throw error;
+    return !!(data && data.ativo === true);
+  }
+  async function validarSessao(session){
+    if(!session?.user?.email) return false;
+    try{
+      if(await temAcesso(session.user.email)){ mostrarApp(); return true; }
+      await sb.auth.signOut();
+      mensagem('Este e-mail não possui acesso ativo a este produto.');
+    }catch(e){ mensagem('Não foi possível verificar seu acesso. Tente novamente.'); }
+    return false;
+  }
+  document.getElementById('loginBtn').onclick=async()=>{
+    mensagem(''); const e=email(), p=senhaEl.value;
+    if(!e||!p){ mensagem('Informe e-mail e senha.'); return; }
+    const {data,error}=await sb.auth.signInWithPassword({email:e,password:p});
+    if(error){ mensagem('E-mail ou senha inválidos.'); return; }
+    await validarSessao(data.session);
+  };
+  document.getElementById('criarSenhaBtn').onclick=async()=>{
+    mensagem(''); const e=email(), p=senhaEl.value;
+    if(!e||!p){ mensagem('Informe o e-mail da compra e escolha uma senha.'); return; }
+    if(p.length<6){ mensagem('A senha deve ter pelo menos 6 caracteres.'); return; }
+    try{
+      if(!(await temAcesso(e))){ mensagem('Este e-mail ainda não possui acesso ativo a este produto.'); return; }
+      const {data,error}=await sb.auth.signUp({email:e,password:p});
+      if(error){ mensagem(error.message.includes('already')?'Este e-mail já possui cadastro. Use Entrar ou Esqueci minha senha.':'Não foi possível criar a senha: '+error.message); return; }
+      if(data.session) await validarSessao(data.session); else mensagem('Cadastro criado. Verifique seu e-mail para confirmar o acesso.',true);
+    }catch(err){ mensagem('Não foi possível verificar seu acesso. Tente novamente.'); }
+  };
+  document.getElementById('esqueciSenhaBtn').onclick=async()=>{
+    const e=email(); if(!e){ mensagem('Digite seu e-mail acima primeiro.'); return; }
+    const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.href.split('#')[0]});
+    mensagem(error?'Não foi possível enviar a recuperação.':'Enviamos as instruções de recuperação para seu e-mail.',!error);
+  };
+  if(logout) logout.onclick=async()=>{ await sb.auth.signOut(); location.reload(); };
+  sb.auth.getSession().then(({data})=>{ if(data.session) validarSessao(data.session); });
+})();
+</script>
+
+</body>
+</html>
