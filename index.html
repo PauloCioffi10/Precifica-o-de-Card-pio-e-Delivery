@@ -748,59 +748,39 @@ principal();
 <script>
 /* Login e controle de acesso. Não altera os cálculos do aplicativo. */
 (() => {
-  const SUPABASE_URL = 'https://ntxzfyqyuwbeammpakgx.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_T7UpzSoCL_3hdaqVkPOIOw__cBIBxZz';
-  const PRODUCT_CODE = 'precificacao_delivery';
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-  const gate = document.getElementById('loginGate');
-  const app = document.getElementById('appShell');
-  const msg = document.getElementById('loginMsg');
-  const emailEl = document.getElementById('loginEmail');
-  const senhaEl = document.getElementById('loginSenha');
-  const logout = document.getElementById('logoutBtn');
-
-  function mensagem(t, ok=false){ msg.textContent=t; msg.className=ok?'login-ok':'login-error'; }
-  function email(){ return (emailEl.value||'').trim().toLowerCase(); }
-  function mostrarApp(){ gate.style.display='none'; app.style.display='block'; if(logout) logout.classList.remove('hidden'); }
-  async function temAcesso(userEmail){
-    const {data,error}=await sb.from('app_acessos').select('ativo,status').eq('email',userEmail.toLowerCase()).eq('produto',PRODUCT_CODE).maybeSingle();
-    if(error) throw error;
-    return !!(data && data.ativo === true);
-  }
-  async function validarSessao(session){
-    if(!session?.user?.email) return false;
-    try{
-      if(await temAcesso(session.user.email)){ mostrarApp(); return true; }
-      await sb.auth.signOut();
-      mensagem('Este e-mail não possui acesso ativo a este produto.');
-    }catch(e){ mensagem('Não foi possível verificar seu acesso. Tente novamente.'); }
-    return false;
-  }
-  document.getElementById('loginBtn').onclick=async()=>{
-    mensagem(''); const e=email(), p=senhaEl.value;
-    if(!e||!p){ mensagem('Informe e-mail e senha.'); return; }
-    const {data,error}=await sb.auth.signInWithPassword({email:e,password:p});
-    if(error){ mensagem('E-mail ou senha inválidos.'); return; }
-    await validarSessao(data.session);
-  };
-  document.getElementById('criarSenhaBtn').onclick=async()=>{
-    mensagem(''); const e=email(), p=senhaEl.value;
-    if(!e||!p){ mensagem('Informe o e-mail da compra e escolha uma senha.'); return; }
-    if(p.length<6){ mensagem('A senha deve ter pelo menos 6 caracteres.'); return; }
-    try{
-      if(!(await temAcesso(e))){ mensagem('Este e-mail ainda não possui acesso ativo a este produto.'); return; }
-      const {data,error}=await sb.auth.signUp({email:e,password:p});
-      if(error){ mensagem(error.message.includes('already')?'Este e-mail já possui cadastro. Use Entrar ou Esqueci minha senha.':'Não foi possível criar a senha: '+error.message); return; }
-      if(data.session) await validarSessao(data.session); else mensagem('Cadastro criado. Verifique seu e-mail para confirmar o acesso.',true);
-    }catch(err){ mensagem('Não foi possível verificar seu acesso. Tente novamente.'); }
-  };
-  document.getElementById('esqueciSenhaBtn').onclick=async()=>{
-    const e=email(); if(!e){ mensagem('Digite seu e-mail acima primeiro.'); return; }
-    const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.href.split('#')[0]});
-    mensagem(error?'Não foi possível enviar a recuperação.':'Enviamos as instruções de recuperação para seu e-mail.',!error);
-  };
-  if(logout) logout.onclick=async()=>{ await sb.auth.signOut(); location.reload(); };
-  sb.auth.getSession().then(({data})=>{ if(data.session) validarSessao(data.session); });
+ const SUPABASE_URL='https://ntxzfyqyuwbeammpakgx.supabase.co';
+ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_T7UpzSoCL_3hdaqVkPOIOw__cBIBxZz';
+ const PRODUCT_CODE='precificacao_delivery';
+ const APP_URL='https://paulocioffi10.github.io/Precifica-o-de-Card-pio-e-Delivery/';
+ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+ const gate=document.getElementById('loginGate'), app=document.getElementById('appShell'),
+ msg=document.getElementById('loginMsg'), emailEl=document.getElementById('loginEmail'),
+ senhaEl=document.getElementById('loginSenha'), logout=document.getElementById('logoutBtn'),
+ loginBtn=document.getElementById('loginBtn'), criarSenhaBtn=document.getElementById('criarSenhaBtn'),
+ esqueciSenhaBtn=document.getElementById('esqueciSenhaBtn');
+ function mensagem(t,ok=false){msg.textContent=t;msg.className=ok?'login-ok':'login-error'}
+ function email(){return(emailEl.value||'').trim().toLowerCase()}
+ function mostrarApp(){gate.style.display='none';app.style.display='block';if(logout)logout.classList.remove('hidden')}
+ async function temAcesso(e){const {data,error}=await sb.from('app_acessos').select('ativo,status').eq('email',e.toLowerCase()).eq('produto',PRODUCT_CODE).maybeSingle();if(error)throw error;return!!(data&&data.ativo===true)}
+ async function validarSessao(s){if(!s?.user?.email)return false;try{if(await temAcesso(s.user.email)){mostrarApp();return true}await sb.auth.signOut();mensagem('Este e-mail não possui acesso ativo a este produto.')}catch(e){mensagem('Não foi possível verificar seu acesso. Tente novamente.')}return false}
+ function modoRecuperacao(){
+  document.querySelector('.login-card h1').textContent='Criar nova senha';
+  document.querySelector('.login-card p').textContent='Digite e confirme sua nova senha.';
+  document.querySelector('label[for="loginEmail"]').style.display='none';emailEl.style.display='none';
+  document.querySelector('label[for="loginSenha"]').textContent='Nova senha';senhaEl.value='';senhaEl.placeholder='Nova senha';
+  loginBtn.style.display='none';criarSenhaBtn.style.display='none';esqueciSenhaBtn.style.display='none';
+  let c=document.getElementById('confirmarNovaSenha');
+  if(!c){c=document.createElement('input');c.id='confirmarNovaSenha';c.type='password';c.autocomplete='new-password';c.placeholder='Confirme a nova senha';senhaEl.insertAdjacentElement('afterend',c)}
+  let s=document.getElementById('salvarNovaSenhaBtn');
+  if(!s){s=document.createElement('button');s.id='salvarNovaSenhaBtn';s.type='button';s.className='btn-primary';s.textContent='Salvar nova senha';c.insertAdjacentElement('afterend',s)}
+  s.onclick=async()=>{const p=senhaEl.value;if(p.length<6){mensagem('A senha deve ter pelo menos 6 caracteres.');return}if(p!==c.value){mensagem('As senhas não coincidem.');return}const {error}=await sb.auth.updateUser({password:p});if(error){mensagem('Não foi possível alterar a senha: '+error.message);return}mensagem('Senha alterada com sucesso.',true);setTimeout(()=>location.href=APP_URL,1000)}
+ }
+ loginBtn.onclick=async()=>{mensagem('');const e=email(),p=senhaEl.value;if(!e||!p){mensagem('Informe e-mail e senha.');return}const {data,error}=await sb.auth.signInWithPassword({email:e,password:p});if(error){mensagem('E-mail ou senha inválidos.');return}await validarSessao(data.session)};
+ criarSenhaBtn.onclick=async()=>{mensagem('');const e=email(),p=senhaEl.value;if(!e||!p){mensagem('Informe o e-mail da compra e escolha uma senha.');return}if(p.length<6){mensagem('A senha deve ter pelo menos 6 caracteres.');return}try{if(!(await temAcesso(e))){mensagem('Este e-mail ainda não possui acesso ativo a este produto.');return}const {data,error}=await sb.auth.signUp({email:e,password:p,options:{emailRedirectTo:APP_URL}});if(error){mensagem('Não foi possível criar a senha: '+error.message);return}if(data.session)await validarSessao(data.session);else mensagem('Cadastro criado. Verifique seu e-mail para confirmar o acesso.',true)}catch(e){mensagem('Não foi possível verificar seu acesso. Tente novamente.')}};
+ esqueciSenhaBtn.onclick=async()=>{mensagem('');const e=email();if(!e){mensagem('Digite seu e-mail acima primeiro.');return}const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:APP_URL});mensagem(error?'Não foi possível enviar a recuperação: '+error.message:'Pedido enviado. Verifique sua caixa de entrada e spam.',!error)};
+ if(logout)logout.onclick=async()=>{await sb.auth.signOut();location.href=APP_URL};
+ sb.auth.onAuthStateChange(async(event,session)=>{if(event==='PASSWORD_RECOVERY'){modoRecuperacao();return}if(event==='SIGNED_IN'&&session&&!location.hash.includes('type=recovery'))await validarSessao(session)});
+ sb.auth.getSession().then(({data})=>{if((location.hash||'').includes('type=recovery'))modoRecuperacao();else if(data.session)validarSessao(data.session)});
 })();
 </script>
 
